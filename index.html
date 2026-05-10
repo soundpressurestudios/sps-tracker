@@ -50,22 +50,25 @@
 </div>
 
 <div id="saveIndicator" class="save-status">Sistema Pronto</div>
-
+    
 <script>
     // URL DEFINITIVO DO TEU WEB APP
-    const API = 'https://script.google.com/macros/s/AKfycbxK-ePeX1FWx-wa6pPG_kQK0nzHvoJ29iBDOI4pA1t2maK4b4LSvK-TdfuOc-cbm8hRVw/exec;
-    let state = { projects: [], artists: [], tracks: [] };
+    const API = 'https://script.google.com/macros/s/AKfycbz8F1EoECIXJQp7I0rpLu5bZlBtw09hHzaz7uWUlSvKjNukP_T3T60x-61igtv0pKB4GQ/exec;
 
-    async function syncLab() {
-        try {
-            const r = await fetch(API + '?action=getAll');
-            const data = await r.json();
-            state = data;
-            renderSidebar();
-        } catch (e) {
-            document.getElementById('projectList').innerHTML = "Erro ao ligar ao arquivo.";
-        }
+async function syncLab() {
+    try {
+        // Adicionamos um timestamp para evitar que o browser use dados antigos (cache)
+        const response = await fetch(API + '?action=getAll&t=' + Date.now());
+        if (!response.ok) throw new Error('Falha na conexão');
+        const data = await response.json();
+        state = data;
+        renderSidebar();
+        document.getElementById('saveIndicator').innerText = "Lab Sincronizado";
+    } catch (e) {
+        console.error(e);
+        document.getElementById('projectList').innerHTML = "Sinal interrompido. Verifica o Deploy no Google.";
     }
+}
 
     function renderSidebar() {
         let html = '';
