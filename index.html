@@ -1,91 +1,133 @@
 <!DOCTYPE html>
-<html>
+<html lang="pt">
 <head>
     <meta charset="UTF-8">
     <title>SPS | Project Tracker</title>
     <style>
-        :root{--bg:#0e0e0e;--surface:#161616;--accent:#c8a96e;--text:#e8e8e8;--text3:#888888;--border:#2e2e2e;--green:#4caf7d;}
-        body{font-family: 'Inter', sans-serif, monospace; background:var(--bg); color:var(--text); margin:0; height:100vh; display:grid; grid-template-columns:280px 1fr;}
-        .sidebar{background:var(--surface); border-right:1px solid var(--border); padding:20px; overflow-y:auto;}
-        .main{padding:40px; overflow-y:auto;}
-        .project-card{padding:15px; border:1px solid var(--border); margin-bottom:10px; cursor:pointer; transition:0.2s;}
-        .project-card:hover{border-color:var(--accent);}
-        .status-pill{font-size:10px; padding:2px 8px; border-radius:10px; background:var(--border); color:var(--accent); text-transform:uppercase;}
-        .save-indicator{position:fixed; bottom:20px; right:20px; font-size:11px; color:var(--text3);}
-        h2{font-weight:300; letter-spacing:1px; color:var(--accent);}
+        :root {
+            --bg: #0e0e0e; --surface: #161616; --accent: #c8a96e;
+            --text: #e8e8e8; --text-dim: #888888; --border: #2e2e2e;
+        }
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg); color: var(--text); margin: 0;
+            display: grid; grid-template-columns: 300px 1fr; height: 100vh;
+        }
+        .sidebar { background: var(--surface); border-right: 1px solid var(--border); padding: 25px; overflow-y: auto; }
+        .main { padding: 50px; overflow-y: auto; }
+        .project-item { 
+            padding: 15px; border: 1px solid var(--border); margin-bottom: 12px; 
+            cursor: pointer; transition: all 0.3s ease; border-radius: 4px;
+        }
+        .project-item:hover { border-color: var(--accent); background: #1a1a1a; }
+        .project-item.active { border-left: 3px solid var(--accent); background: #1e1e1e; }
+        .status-badge { 
+            font-size: 9px; text-transform: uppercase; letter-spacing: 1px;
+            color: var(--accent); background: rgba(200, 169, 110, 0.1);
+            padding: 2px 8px; border-radius: 2px;
+        }
+        .save-status { position: fixed; bottom: 30px; right: 30px; font-size: 11px; color: var(--text-dim); }
+        h1, h2, h3 { font-weight: 300; letter-spacing: 0.5px; }
+        select, input, textarea {
+            background: var(--bg); color: var(--text); border: 1px solid var(--border);
+            padding: 12px; border-radius: 4px; width: 100%; margin-top: 5px;
+        }
     </style>
 </head>
 <body>
-    <div class="sidebar">
-        <h3 style="font-size:12px; color:var(--accent);">LAB LOG</h3>
-        <div id="sidebarList">Sincronizando...</div>
-    </div>
-    <div class="main" id="mainContent">
-        <h2>Bem-vindo ao Lab, Leopoldo.</h2>
-        <p style="color:var(--text3);">Selecciona um projecto para gerir a energia e o progresso das sessões.</p>
-    </div>
-    <div id="saveIndicator" class="save-indicator">Ready</div>
 
-    <script>
-        // COLA AQUI O TEU URL DE "DEPLOY" DO GOOGLE
-        const API = 'https://script.google.com/macros/s/AKfycbw2ACqBH1X8wnjiIlp4hWDMRDC9uyWO8rAza5GR7MzK--6QFUvbBVGv0UjJgK5mxH45QA/exec';
-        let projects = [];
+<div class="sidebar">
+    <div style="margin-bottom: 30px;">
+        <img src="https://soundpressurestudios.com/wp-content/uploads/2024/11/sps-logo-simbolo-transp-Medium.png" style="height: 40px; opacity: 0.8;">
+        <p style="font-size: 10px; color: var(--text-dim); letter-spacing: 2px; margin-top: 10px;">LABORATÓRIO DE SOM</p>
+    </div>
+    <div id="projectList">Sincronizando energia...</div>
+</div>
 
-        async function loadData() {
-            try {
-                const response = await fetch(API + '?action=getAll');
-                const data = await response.json();
-                projects = data.projects;
-                renderSidebar();
-            } catch (e) {
-                document.getElementById('sidebarList').innerHTML = "Erro de ligação ao Sheets.";
-            }
+<div class="main" id="editor">
+    <h2 style="color: var(--text-dim);">Bem-vindo, Leopoldo.</h2>
+    <p>Selecciona um projecto para documentar a evolução e a textura das sessões.</p>
+</div>
+
+<div id="saveIndicator" class="save-status">Sistema Pronto</div>
+
+<script>
+    // URL DEFINITIVO DO TEU WEB APP
+    const API = 'https://script.google.com/macros/s/AKfycbxK-ePeX1FWx-wa6pPG_kQK0nzHvoJ29iBDOI4pA1t2maK4b4LSvK-TdfuOc-cbm8hRVw/exec;
+    let state = { projects: [], artists: [], tracks: [] };
+
+    async function syncLab() {
+        try {
+            const r = await fetch(API + '?action=getAll');
+            const data = await r.json();
+            state = data;
+            renderSidebar();
+        } catch (e) {
+            document.getElementById('projectList').innerHTML = "Erro ao ligar ao arquivo.";
         }
+    }
 
-        function renderSidebar() {
-            let html = '';
-            projects.forEach(p => {
-                html += `<div class="project-card" onclick="selectProject('${p.id}')">
-                    <div style="font-size:13px; font-weight:bold;">${p.title}</div>
-                    <div style="margin-top:5px;"><span class="status-pill">${p.phase}</span></div>
+    function renderSidebar() {
+        let html = '';
+        state.projects.forEach(p => {
+            html += `
+                <div class="project-item" onclick="openProject('${p.id}')">
+                    <div style="font-size: 14px; font-weight: 500;">${p.title}</div>
+                    <div style="margin-top: 8px;"><span class="status-badge">${p.phase}</span></div>
                 </div>`;
-            });
-            document.getElementById('sidebarList').innerHTML = html;
-        }
+        });
+        document.getElementById('projectList').innerHTML = html;
+    }
 
-        function selectProject(id) {
-            const p = projects.find(proj => proj.id === id);
-            document.getElementById('mainContent').innerHTML = `
-                <h2>${p.artistId} // ${p.title}</h2>
-                <div style="margin-top:20px; background:var(--surface); padding:20px; border:1px solid var(--border);">
-                    <label style="display:block; font-size:11px; color:var(--text3); margin-bottom:10px;">ESTADO DO PROCESSO</label>
-                    <select onchange="updateProject('${p.id}', 'phase', this.value)" style="background:var(--bg); color:var(--text); border:1px solid var(--border); padding:10px; width:200px;">
-                        <option value="Recording" ${p.phase=='Recording'?'selected':''}>Captação</option>
-                        <option value="Mixing" ${p.phase=='Mixing'?'selected':''}>Mistura</option>
-                        <option value="Mastering" ${p.phase=='Mastering'?'selected':''}>Masterização</option>
-                        <option value="Completed" ${p.phase=='Completed'?'selected':''}>Concluído</option>
+    function openProject(id) {
+        const p = state.projects.find(proj => proj.id === id);
+        document.getElementById('editor').innerHTML = `
+            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                <div>
+                    <h1 style="margin:0;">${p.title}</h1>
+                    <p style="color: var(--accent); margin: 5px 0 30px 0;">Estado: ${p.phase}</p>
+                </div>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px;">
+                <div style="background: var(--surface); padding: 25px; border-radius: 4px;">
+                    <label style="font-size: 11px; color: var(--text-dim);">FASE DO PROCESSO</label>
+                    <select onchange="updateProject('${p.id}', 'phase', this.value)">
+                        <option value="Recording" ${p.phase=='Recording'?'selected':''}>Captação / Lab</option>
+                        <option value="Mixing" ${p.phase=='Mixing'?'selected':''}>Mistura / Texturas</option>
+                        <option value="Mastering" ${p.phase=='Mastering'?'selected':''}>Masterização / Final</option>
+                        <option value="Completed" ${p.phase=='Completed'?'selected':''}>Arquivo Concluído</option>
                     </select>
                 </div>
-            `;
-        }
+                <div style="background: var(--surface); padding: 25px; border-radius: 4px;">
+                    <label style="font-size: 11px; color: var(--text-dim);">NOTAS DE ENERGIA/VIBE</label>
+                    <textarea oninput="updateProject('${p.id}', 'notes', this.value)" placeholder="Como está o flow do projeto?">${p.notes || ''}</textarea>
+                </div>
+            </div>
+        `;
+    }
 
-        async function updateProject(id, field, value) {
-            const p = projects.find(proj => proj.id === id);
-            p[field] = value;
-            document.getElementById('saveIndicator').innerText = "Gravando no Lab...";
-            
-            // Envio para o Google Sheets
-            await fetch(API, {
-                method: 'POST',
-                mode: 'no-cors',
-                body: JSON.stringify({ action: 'save', sheet: 'Projects', record: p })
-            });
-            
-            document.getElementById('saveIndicator').innerText = "Guardado.";
-            renderSidebar();
-        }
+    async function updateProject(id, field, value) {
+        const p = state.projects.find(proj => proj.id === id);
+        p[field] = value;
+        
+        document.getElementById('saveIndicator').innerText = "A gravar no laboratório...";
+        
+        // Envio via POST (silencioso e eficiente)
+        await fetch(API, {
+            method: 'POST',
+            mode: 'no-cors',
+            body: JSON.stringify({ action: 'save', sheet: 'Projects', record: p })
+        });
+        
+        setTimeout(() => {
+            document.getElementById('saveIndicator').innerText = "Alterações guardadas.";
+            if(field === 'phase') renderSidebar();
+        }, 800);
+    }
 
-        window.onload = loadData;
-    </script>
+    window.onload = syncLab;
+</script>
+
 </body>
 </html>
