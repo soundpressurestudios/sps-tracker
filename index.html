@@ -296,23 +296,7 @@ function loadData(){
   setSave('Loading...','');
   var done={a:false,p:false,t:false,tk:false};
   var d={artists:[],projects:[],tracks:[],tasks:[]};
-  function check(){
-    if(!done.a||!done.p||!done.t||!done.tk)return;
-    artists=d.artists;projects=d.projects;tracks=d.tracks;tasks=d.tasks;
-    setSave('— ready','');
-    renderAll();
-  }
-  function fetchSheet(name,key){
-    fetch(API+'?sheet='+name+'&t='+Date.now())
-      .then(function(r){return r.json();})
-      .then(function(data){d[key]=data||[];done[key]=true;check();})
-      .catch(function(){d[key]=[];done[key]=true;check();});
-  }
-  fetchSheet('Artists','a');
-  fetchSheet('Projects','p');
-  fetchSheet('Tracks','t');
-  fetchSheet('Tasks','tk');
-}
+
   function check(){
     if(!done.a||!done.p||!done.t||!done.tk)return;
     artists=d.artists;projects=d.projects;tracks=d.tracks;tasks=d.tasks;
@@ -321,16 +305,10 @@ function loadData(){
   }
 
   function fetchSheet(name,key){
-    var script=document.createElement('script');
-    var cb='cb_'+name+'_'+Date.now();
-    window[cb]=function(data){
-      d[key]=data;done[key]=true;
-      delete window[cb];document.body.removeChild(script);
-      check();
-    };
-    script.src=API+'?sheet='+name+'&callback='+cb+'&t='+Date.now();
-    script.onerror=function(){d[key]=[];done[key]=true;check();};
-    document.body.appendChild(script);
+    fetch(API+'?sheet='+name+'&t='+Date.now())
+      .then(function(r){return r.json();})
+      .then(function(data){d[key]=data||[];done[key]=true;check();})
+      .catch(function(){d[key]=[];done[key]=true;check();});
   }
 
   fetchSheet('Artists','a');
