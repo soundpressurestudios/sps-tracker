@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>SPS Project Tracker</title>
+<style>
+:root{--bg:#0e0e0e;--surface:#161616;--surface2:#1e1e1e;--surface3:#272727;--border:#2e2e2e;--border2:#3a3a3a;--accent:#c8a96e;--accent2:#e8c98e;--red:#8B0000;--text:#e8e8e8;--text2:#b0b0b0;--text3:#888888;--green:#4caf7d;--yellow:#f0c040;--blue:#5b8fcc;--orange:#e07840;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:monospace;background:var(--bg);color:var(--text);font-size:13px;overflow:hidden;height:100vh;}
+.header{background:var(--surface);border-bottom:1px solid var(--border);padding:10px 20px;display:flex;align-items:center;justify-content:space-between;height:52px;}
+.header-logo{display:flex;align-items:center;gap:10px;}
+.header-logo img{height:32px;width:auto;}
+.header-title{font-family:sans-serif;font-size:14px;font-weight:700;color:var(--text);}
+.header-sub{font-size:10px;color:var(--text3);letter-spacing:.12em;text-transform:uppercase;}
+.header-actions{display:flex;gap:8px;align-items:center;}
+.save-indicator{font-size:10px;color:var(--text3);margin-right:8px;}
+.save-indicator.saved{color:var(--green);}
+.save-indicator.error{color:#e05555;}
+.btn{font-family:monospace;font-size:11px;padding:6px 12px;border-radius:4px;cursor:pointer;border:none;transition:all .15s;}
+.btn-primary{background:var(--accent);color:#0e0e0e;font-weight:600;}
+.btn-primary:hover{background:var(--accent2);}
+.btn-ghost{background:transparent;color:var(--text2);border:1px solid var(--border2);}
+.btn-ghost:hover{border-color:var(--accent);color:var(--accent);}
+.btn-danger{background:transparent;color:#e05555;border:1px solid #4a1818;font-size:11px;padding:5px 10px;}
+.btn-danger:hover{background:#2a1010;}
+.btn-small{font-size:10px;padding:4px 8px;}
+.app-body{display:grid;grid-template-columns:260px 1fr;height:calc(100vh - 52px);}
+.sidebar{background:var(--surface);border-right:1px solid var(--border);overflow-y:auto;display:flex;flex-direction:column;}
+.sidebar-search{padding:10px;border-bottom:1px solid var(--border);}
+.sidebar-search input{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:6px 10px;color:var(--text);font-family:monospace;font-size:12px;outline:none;}
+.sidebar-search input:focus{border-color:var(--accent);}
+.sidebar-search input::placeholder{color:var(--text3);}
+.sidebar-filters{padding:8px 10px;display:flex;gap:5px;flex-wrap:wrap;border-bottom:1px solid var(--border);}
+.filter-chip{font-family:monospace;font-size:9px;padding:3px 7px;border-radius:10px;cursor:pointer;border:1px solid var(--border);color:var(--text3);background:transparent;transition:all .15s;}
+.filter-chip.active{border-color:var(--accent);color:var(--accent);background:rgba(200,169,110,.1);}
+.sidebar-list{flex:1;overflow-y:auto;padding-bottom:20px;}
+.artist-group{margin-bottom:2px;}
+.artist-header{padding:8px 12px 4px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;position:sticky;top:0;background:var(--surface);z-index:10;}
+.artist-header:hover{background:var(--surface2);}
+.artist-name{font-family:sans-serif;font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.08em;}
+.artist-toggle{font-size:10px;color:var(--text3);}
+.project-item{padding:7px 12px 7px 20px;cursor:pointer;border-left:2px solid transparent;transition:all .12s;border-bottom:1px solid rgba(255,255,255,.03);}
+.project-item:hover{background:var(--surface2);border-left-color:var(--border2);}
+.project-item.active{background:var(--surface3);border-left-color:var(--accent);}
+.project-item-title{font-size:12px;color:var(--text);margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.project-item-meta{display:flex;gap:6px;align-items:center;}
+.format-badge{font-size:9px;color:var(--text3);background:var(--surface3);padding:1px 5px;border-radius:3px;border:1px solid var(--border);}
+.phase-pill{font-size:9px;padding:2px 6px;border-radius:8px;font-weight:500;}
+.phase-production{background:rgba(155,114,207,.15);color:#9b72cf;}
+.phase-recording{background:rgba(91,143,204,.15);color:#5b8fcc;}
+.phase-editing{background:rgba(240,192,64,.15);color:#f0c040;}
+.phase-mixing{background:rgba(200,169,110,.15);color:#c8a96e;}
+.phase-mastering{background:rgba(76,175,125,.15);color:#4caf7d;}
+.phase-completed{background:rgba(76,175,125,.12);color:#6fcf97;}
+.phase-released{background:rgba(200,240,160,.15);color:#a0d870;}
+.phase-onhold{background:rgba(224,120,64,.15);color:#e07840;}
+.phase-closed{background:rgba(100,100,100,.15);color:#888;}
+.main{display:flex;flex-direction:column;overflow:hidden;background:var(--bg);}
+.dashboard{background:var(--surface);border-bottom:1px solid var(--border);padding:12px 20px;flex-shrink:0;}
+.dashboard-title{font-family:sans-serif;font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;}
+.tasks-list{display:flex;flex-direction:column;gap:4px;max-height:200px;overflow-y:auto;}
+.task-item{display:grid;grid-template-columns:1fr auto auto auto;gap:8px;align-items:center;background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:6px 10px;}
+.task-title{font-size:11px;color:var(--text);}
+.task-project{font-size:10px;color:var(--text3);}
+.task-assigned{font-size:10px;color:var(--accent);background:rgba(200,169,110,.1);padding:1px 6px;border-radius:8px;}
+.task-deadline{font-size:10px;color:var(--text3);}
+.task-deadline.urgent{color:#e05555;}
+.task-deadline.soon{color:var(--yellow);}
+.no-tasks{font-size:11px;color:var(--text3);font-style:italic;padding:4px 0;}
+.project-detail-wrapper{flex:1;overflow-y:auto;}
+.project-detail{padding:24px 28px;max-width:860px;}
+.detail-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--border);}
+.detail-meta{display:flex;gap:8px;align-items:center;margin-top:6px;}
+.section{margin-bottom:20px;}
+.section-title{font-family:sans-serif;font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--text3);margin-bottom:8px;display:flex;align-items:center;gap:8px;}
+.section-title::after{content:'';flex:1;height:1px;background:var(--border);}
+.phase-tracker{display:flex;background:var(--surface2);border-radius:5px;overflow:hidden;border:1px solid var(--border);}
+.phase-step{flex:1;padding:7px 4px;text-align:center;cursor:pointer;font-size:9px;color:var(--text3);border-right:1px solid var(--border);transition:all .15s;}
+.phase-step:last-child{border-right:none;}
+.phase-step:hover{background:var(--surface3);color:var(--text2);}
+.phase-step.active{font-weight:600;}
+.phase-step.done{color:var(--green)!important;}
+.fields-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.field-group{display:flex;flex-direction:column;gap:3px;}
+.field-group.full{grid-column:1/-1;}
+.field-label{font-size:10px;color:var(--text3);letter-spacing:.08em;text-transform:uppercase;}
+.field-input{background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:7px 10px;color:var(--text);font-family:monospace;font-size:12px;outline:none;width:100%;transition:border-color .15s;}
+.field-input:focus{border-color:var(--accent);}
+.field-input::placeholder{color:var(--text3);}
+textarea.field-input{resize:vertical;min-height:70px;line-height:1.6;}
+.select-input{background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:7px 10px;color:var(--text);font-family:monospace;font-size:12px;outline:none;width:100%;cursor:pointer;}
+.select-input option{background:var(--surface2);}
+.tracks-table{width:100%;border-collapse:collapse;}
+.tracks-table th{font-size:9px;color:var(--text3);letter-spacing:.08em;text-transform:uppercase;padding:5px 8px;border-bottom:1px solid var(--border);text-align:left;font-weight:600;}
+.tracks-table td{padding:4px;border-bottom:1px solid rgba(255,255,255,.03);vertical-align:middle;}
+.track-num-cell{color:var(--text3);font-size:11px;width:30px;text-align:center;}
+.track-title-input{background:transparent;border:none;color:var(--text);font-family:monospace;font-size:12px;outline:none;width:100%;padding:4px 6px;border-radius:3px;}
+.track-title-input:hover{background:var(--surface2);}
+.track-title-input:focus{background:var(--surface2);outline:1px solid var(--border2);}
+.track-phase-select,.track-assigned-select{background:var(--surface2);border:1px solid var(--border);border-radius:3px;color:var(--text2);font-family:monospace;font-size:10px;padding:3px 5px;outline:none;cursor:pointer;width:100%;}
+.track-remove-btn{background:transparent;border:none;color:var(--text3);cursor:pointer;font-size:14px;padding:2px 6px;transition:color .15s;}
+.track-remove-btn:hover{color:#e05555;}
+.add-track-btn{display:flex;align-items:center;gap:6px;background:transparent;border:1px dashed var(--border2);border-radius:4px;padding:7px 12px;color:var(--text3);cursor:pointer;font-family:monospace;font-size:11px;width:100%;margin-top:6px;transition:all .15s;}
+.add-track-btn:hover{border-color:var(--accent);color:var(--accent);}
+.track-main-row:hover{background:var(--surface2);}
+.track-expanded-row{background:var(--surface2);}
+.track-detail-row td{padding:0;}
+.track-detail-panel{background:var(--surface3);border-top:1px solid var(--border);border-bottom:1px solid var(--border);padding:14px 16px;}
+.track-detail-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:8px;}
+.links-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.link-row{display:flex;align-items:center;gap:8px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:7px 10px;}
+.link-icon{font-size:13px;width:18px;text-align:center;flex-shrink:0;}
+.link-input{background:transparent;border:none;color:var(--accent);font-family:monospace;font-size:11px;outline:none;flex:1;min-width:0;}
+.link-input::placeholder{color:var(--text3);}
+.feedback-pending-badge{font-size:10px;background:rgba(224,120,64,.15);color:var(--orange);padding:2px 8px;border-radius:8px;border:1px solid rgba(224,120,64,.3);}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:200;display:flex;align-items:center;justify-content:center;}
+.modal{background:var(--surface);border:1px solid var(--border2);border-radius:8px;padding:24px;width:480px;max-width:95vw;max-height:90vh;overflow-y:auto;}
+.modal-title{font-family:sans-serif;font-size:16px;font-weight:700;margin-bottom:16px;color:var(--text);}
+.modal-fields{display:flex;flex-direction:column;gap:12px;}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:16px;}
+.empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:12px;color:var(--text3);}
+.empty-icon{font-size:40px;opacity:.25;}
+.empty-text{font-family:sans-serif;font-size:15px;color:var(--text3);}
+::-webkit-scrollbar{width:4px;height:4px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px;}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-logo">
+    <img src="https://soundpressurestudios.com/wp-content/uploads/2024/11/sps-logo-simbolo-transp-Medium.png" alt="SPS" onerror="this.style.display='none'">
+    <div>
+      <div class="header-title">Sound Pressure Studios</div>
+      <div class="header-sub">Project Tracker</div>
+    </div>
+  </div>
+  <div class="header-actions">
+    <span class="save-indicator" id="saveIndicator">Loading...</span>
+    <button class="btn btn-ghost btn-small" id="addTaskBtn">+ Task</button>
+    <button class="btn btn-primary btn-small" id="newProjectBtn">+ Project</button>
+  </div>
+</div>
+
+<div class="app-body">
+  <div class="sidebar">
+    <div class="sidebar-search">
+      <input type="text" id="searchInput" placeholder="Search...">
+    </div>
+    <div class="sidebar-filters">
+      <button class="filter-chip active" data-filter="all">All</button>
+      <button class="filter-chip" data-filter="active">Active</button>
+      <button class="filter-chip" data-filter="onhold">On Hold</button>
+      <button class="filter-chip" data-filter="completed">Completed</button>
+      <button class="filter-chip" data-filter="released">Released</button>
+      <button class="filter-chip" data-filter="closed">Closed</button>
+    </div>
+    <div class="sidebar-list" id="sidebarList">
+      <div style="padding:20px;color:var(--text3);font-size:12px;text-align:center;">Loading...</div>
+    </div>
+  </div>
+  <div class="main">
+    <div class="dashboard">
+      <div class="dashboard-title">
+        <span>⚡ Next Actions</span>
+        <button class="btn btn-ghost btn-small" id="addTaskBtn2">+ Add Task</button>
+      </div>
+      <div class="tasks-list" id="tasksList">
+        <div class="no-tasks">No tasks yet.</div>
+      </div>
+    </div>
+    <div class="project-detail-wrapper" id="mainContent">
+      <div class="empty-state">
+        <div class="empty-icon">◈</div>
+        <div class="empty-text">Select a project to view details</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="newProjectModal" style="display:none">
+  <div class="modal">
+    <div class="modal-title">New Project</div>
+    <div class="modal-fields">
+      <div class="field-group">
+        <div class="field-label">Artist / Band Name</div>
+        <input class="field-input" id="npArtist" placeholder="e.g. Safari Zone" list="artistsList">
+        <datalist id="artistsList"></datalist>
+      </div>
+      <div class="field-group">
+        <div class="field-label">Project Title</div>
+        <input class="field-input" id="npTitle" placeholder="e.g. 1420.fm">
+      </div>
+      <div class="field-group">
+        <div class="field-label">Format</div>
+        <select class="select-input" id="npFormat">
+          <option value="Album">Album</option>
+          <option value="EP">EP</option>
+          <option value="Single" selected>Single</option>
+          <option value="Demo">Demo</option>
+          <option value="Other">Other</option>
+        </select>
+      </div>
+      <div class="field-group">
+        <div class="field-label">Genre</div>
+        <input class="field-input" id="npGenre" placeholder="e.g. Indie Rock">
+      </div>
+      <div class="field-group">
+        <div class="field-label">Phase</div>
+        <select class="select-input" id="npPhase">
+          <option value="production">Production</option>
+          <option value="recording">Recording</option>
+          <option value="editing">Editing / Sync / Tuning</option>
+          <option value="mixing">Mixing</option>
+          <option value="mastering">Mastering</option>
+          <option value="completed">Completed</option>
+          <option value="released">Released</option>
+          <option value="onhold">On Hold</option>
+          <option value="closed">Closed</option>
+        </select>
+      </div>
+      <div class="field-group" id="onHoldReasonGroup" style="display:none">
+        <div class="field-label">Reason for Hold</div>
+        <input class="field-input" id="npOnHoldReason" placeholder="e.g. Awaiting payment...">
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="cancelProjectBtn">Cancel</button>
+      <button class="btn btn-primary" id="createProjectBtn">Create Project</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="newTaskModal" style="display:none">
+  <div class="modal">
+    <div class="modal-title">New Task</div>
+    <div class="modal-fields">
+      <div class="field-group">
+        <div class="field-label">Task Description</div>
+        <input class="field-input" id="ntTitle" placeholder="e.g. Mix vocals for track 3">
+      </div>
+      <div class="field-group">
+        <div class="field-label">Assigned To</div>
+        <select class="select-input" id="ntAssigned">
+          <option value="Leopoldo">Leopoldo</option>
+          <option value="Goncalo">Goncalo</option>
+          <option value="Both">Both</option>
+        </select>
+      </div>
+      <div class="field-group">
+        <div class="field-label">Deadline</div>
+        <input class="field-input" type="date" id="ntDeadline">
+      </div>
+      <div class="field-group">
+        <div class="field-label">Priority</div>
+        <select class="select-input" id="ntPriority">
+          <option value="high">High</option>
+          <option value="medium" selected>Medium</option>
+          <option value="low">Low</option>
+        </select>
+      </div>
+      <div class="field-group">
+        <div class="field-label">Related Project</div>
+        <select class="select-input" id="ntProject">
+          <option value="">— None —</option>
+        </select>
+      </div>
+      <div class="field-group">
+        <div class="field-label">Notes</div>
+        <textarea class="field-input" id="ntNotes" rows="2"></textarea>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="cancelTaskBtn">Cancel</button>
+      <button class="btn btn-primary" id="createTaskBtn">Add Task</button>
+    </div>
+  </div>
+</div>
+
+<script>
+var API = 'https://script.google.com/macros/s/AKfycbzRQsEMxybmt7bcDP77QOKVbBWaJwO1WtlORiBgR2ffGyWJdAOxYsdQ_ebq8eRR1LVTgw/exec';
+
+var PHASES=['production','recording','editing','mixing','mastering','completed','released','onhold','closed'];
+var PHASE_LABELS={production:'Production',recording:'Recording',editing:'Editing / Sync / Tuning',mixing:'Mixing',mastering:'Mastering',completed:'Completed',released:'Released',onhold:'On Hold',closed:'Closed'};
+var ACTIVE_PHASES=['production','recording','editing','mixing','mastering'];
+var artists=[],projects=[],tracks=[],tasks=[];
+var currentProjectId=null,currentFilter='all',expandedTrackId=null;
+var artistsCollapsed={},saveTimeout=null;
+
+function uid(){return String(Date.now())+String(Math.floor(Math.random()*9999));}
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function setSave(t,c){var e=document.getElementById('saveIndicator');e.textContent=t;e.className='save-indicator'+(c?' '+c:'');}
+
+function loadData(){
+  setSave('Loading...','');
+  var done={a:false,p:false,t:false,tk:false};
+  var d={artists:[],projects:[],tracks:[],tasks:[]};
+
+  function check(){
+    if(!done.a||!done.p||!done.t||!done.tk)return;
+    artists=d.artists;projects=d.projects;tracks=d.tracks;tasks=d.tasks;
+    setSave('— ready','');
+    renderAll();
+  }
+
+  function fetchSheet(name,key){
+    var script=document.createElement('script');
+    var cb='cb_'+name+'_'+Date.now();
+    window[cb]=function(data){
+      d[key]=data;done[key]=true;
+      delete window[cb];document.body.removeChild(script);
+      check();
+    };
+    script.src=API+'?sheet='+name+'&callback='+cb+'&t='+Date.now();
+    script.onerror=function(){d[key]=[];done[key]=true;check();};
+    document.body.appendChild(script);
+  }
+
+  fetchSheet('Artists','a');
+  fetchSheet('Projects','p');
+  fetchSheet('Tracks','t');
+  fetchSheet('Tasks','tk');
+}
+
+function saveRecord(sheetName,record){
+  setSave('Saving...','');
+  fetch(API,{
+    method:'POST',
+    body:JSON.stringify({action:'save',sheet:sheetName,record:record})
+  }).then(function(){
+    setSave('Saved','saved');
+    setTimeout(function(){setSave('— ready','');},2000);
+  }).catch(function(){setSave('Error','error');});
+}
+
+function deleteRecord(sheetName,id){
+  fetch(API,{
+    method:'POST',
+    body:JSON.stringify({action:'delete',sheet:sheetName,id:id})
+  }).catch(function(){});
+}
+
+function debounceSave(sheetName,record){
+  if(saveTimeout)clearTimeout(saveTimeout);
+  saveTimeout=setTimeout(function(){saveRecord(sheetName,record);},800);
+}
+
+function renderAll(){renderSidebar();renderTasks();updateArtistDatalist();updateProjectSelect();}
+
+function renderSidebar(){
+  var search=document.getElementById('searchInput').value.toLowerCase();
+  var list=document.getElementById('sidebarList');
+  var amap={};for(var i=0;i<artists.length;i++)amap[artists[i].id]=artists[i];
+  var grouped={};
+  for(var j=0;j<projects.length;j++){
+    var p=projects[j];
+    if(!filterMatch(p.phase))continue;
+    if(search&&p.title.toLowerCase().indexOf(search)<0&&(!amap[p.artistId]||amap[p.artistId].name.toLowerCase().indexOf(search)<0))continue;
+    if(!grouped[p.artistId])grouped[p.artistId]=[];
+    grouped[p.artistId].push(p);
+  }
+  var aids=Object.keys(grouped);
+  if(aids.length===0){list.innerHTML='<div style="padding:20px;color:var(--text3);font-size:12px;text-align:center;">No projects found</div>';return;}
+  aids.sort(function(a,b){var na=amap[a]?amap[a].name:'';var nb=amap[b]?amap[b].name:'';return na.localeCompare(nb);});
+  var html='';
+  for(var k=0;k<aids.length;k++){
+    var aid=aids[k];var artist=amap[aid];if(!artist)continue;
+    var collapsed=artistsCollapsed[aid];
+    html+='<div class="artist-group"><div class="artist-header" data-aid="'+aid+'"><span class="artist-name">'+esc(artist.name)+'</span><span class="artist-toggle">'+(collapsed?'▸':'▾')+'</span></div>';
+    if(!collapsed){
+      html+='<div class="artist-projects">';
+      var ap=grouped[aid];
+      for(var m=0;m<ap.length;m++){
+        var proj=ap[m];
+        var pt=tracks.filter(function(t){return t.projectId===proj.id;});
+        var rc=pt.filter(function(t){return t.released==='yes';}).length;
+        html+='<div class="project-item'+(proj.id===currentProjectId?' active':'')+'" data-pid="'+proj.id+'">';
+        html+='<div class="project-item-title">'+esc(proj.title)+'</div>';
+        html+='<div class="project-item-meta"><span class="format-badge">'+esc(proj.format)+'</span><span class="phase-pill phase-'+proj.phase+'">'+PHASE_LABELS[proj.phase]+'</span>';
+        if(pt.length>0)html+='<span style="font-size:9px;color:var(--text3);">'+pt.length+' tracks'+(rc>0?' · '+rc+' released':'')+'</span>';
+        html+='</div></div>';
+      }
+      html+='</div>';
+    }
+    html+='</div>';
+  }
+  list.innerHTML=html;
+  var hdrs=list.querySelectorAll('.artist-header');
+  for(var h=0;h<hdrs.length;h++){hdrs[h].addEventListener('click',function(){var a=this.getAttribute('data-aid');artistsCollapsed[a]=!artistsCollapsed[a];renderSidebar();});}
+  var itms=list.querySelectorAll('.project-item');
+  for(var pi=0;pi<itms.length;pi++){itms[pi].addEventListener('click',function(){currentProjectId=this.getAttribute('data-pid');expandedTrackId=null;renderSidebar();renderProjectDetail();});}
+}
+
+function filterMatch(phase){
+  if(currentFilter==='all')return true;
+  if(currentFilter==='active')return ACTIVE_PHASES.indexOf(phase)>=0;
+  return phase===currentFilter;
+}
+
+function renderTasks(){
+  var list=document.getElementById('tasksList');
+  var pending=tasks.filter(function(t){return t.done!=='true';});
+  pending.sort(function(a,b){var pd={'high':0,'medium':1,'low':2};var pa=pd[a.priority]||1;var pb=pd[b.priority]||1;if(pa!==pb)return pa-pb;if(a.deadline&&b.deadline)return a.deadline.localeCompare(b.deadline);if(a.deadline)return -1;if(b.deadline)return 1;return 0;});
+  if(pending.length===0){list.innerHTML='<div class="no-tasks">No pending tasks.</div>';return;}
+  var html='';
+  var shown=pending.slice(0,8);
+  for(var i=0;i<shown.length;i++){
+    var task=shown[i];
+    var proj=null;for(var j=0;j<projects.length;j++){if(projects[j].id===task.projectId){proj=projects[j];break;}}
+    var dlc='';
+    if(task.deadline){var today=new Date();var dl=new Date(task.deadline);var diff=(dl-today)/(864e5);if(diff<0)dlc='urgent';else if(diff<7)dlc='soon';}
+    var icon=task.priority==='high'?'🔴':task.priority==='medium'?'🟡':'⚪';
+    html+='<div class="task-item"><div><div class="task-title">'+icon+' '+esc(task.title)+'</div>'+(proj?'<div class="task-project">'+esc(proj.title)+'</div>':'')+'</div>';
+    html+='<span class="task-assigned">'+esc(task.assignedTo)+'</span>';
+    html+=(task.deadline?'<span class="task-deadline '+dlc+'">'+task.deadline+'</span>':'<span></span>');
+    html+='<button class="btn btn-danger btn-small" data-tid="'+task.id+'" style="font-size:9px;padding:2px 6px;">Done</button></div>';
+  }
+  if(pending.length>8)html+='<div style="font-size:10px;color:var(--text3);padding:4px 0;">+ '+(pending.length-8)+' more</div>';
+  list.innerHTML=html;
+  var btns=list.querySelectorAll('.btn-danger[data-tid]');
+  for(var d=0;d<btns.length;d++){btns[d].addEventListener('click',function(e){e.stopPropagation();markTaskDone(this.getAttribute('data-tid'));});}
+}
+
+function markTaskDone(id){for(var i=0;i<tasks.length;i++){if(tasks[i].id===id){tasks[i].done='true';saveRecord('Tasks',tasks[i]);renderTasks();return;}}}
+
+function getProject(){for(var i=0;i<projects.length;i++){if(projects[i].id===currentProjectId)return projects[i];}return null;}
+function getArtist(id){for(var i=0;i<artists.length;i++){if(artists[i].id===id)return artists[i];}return null;}
+
+function renderProjectDetail(){
+  var project=getProject();if(!project)return;
+  var artist=getArtist(project.artistId);
+  var pt=tracks.filter(function(t){return t.projectId===project.id;});
+  pt.sort(function(a,b){return parseInt(a.number||0)-parseInt(b.number||0);});
+  var psteps=['production','recording','editing','mixing','mastering','completed','released'];
+  var phHtml='';
+  for(var ps=0;ps<psteps.length;ps++){
+    var ph=psteps[ps];var ci=psteps.indexOf(project.phase);var pi2=psteps.indexOf(ph);
+    var cls='phase-step phase-'+ph;if(ph===project.phase)cls+=' active';else if(pi2<ci&&ci>=0)cls+=' done';
+    phHtml+='<div class="'+cls+'" data-phase="'+ph+'">'+PHASE_LABELS[ph]+'</div>';
+  }
+  var tHtml='';
+  for(var ti=0;ti<pt.length;ti++){
+    var tr=pt[ti];var isExp=expandedTrackId===tr.id;
+    var fpb=tr.feedbackPending==='yes'?'<span class="feedback-pending-badge" style="font-size:9px;margin-left:4px;">!</span>':'';
+    var relB=tr.released==='yes'?'<span style="font-size:9px;color:var(--green);margin-left:4px;">Released</span>':'';
+    tHtml+='<tr class="track-main-row'+(isExp?' track-expanded-row':'')+'">';
+    tHtml+='<td class="track-num-cell">'+String(tr.number||ti+1).padStart(2,'0')+'</td>';
+    tHtml+='<td><input class="track-title-input" value="'+esc(tr.title)+'" data-trid="'+tr.id+'" data-field="title" placeholder="Track title">'+fpb+relB+'</td>';
+    tHtml+='<td style="width:130px"><select class="track-phase-select" data-trid="'+tr.id+'" data-field="phase">';
+    for(var tp=0;tp<PHASES.length;tp++){tHtml+='<option value="'+PHASES[tp]+'"'+(tr.phase===PHASES[tp]?' selected':'')+'>'+PHASE_LABELS[PHASES[tp]]+'</option>';}
+    tHtml+='</select></td>';
+    tHtml+='<td style="width:90px"><select class="track-assigned-select" data-trid="'+tr.id+'" data-field="assignedTo"><option'+(tr.assignedTo==='Leopoldo'?' selected':'')+'>Leopoldo</option><option'+(tr.assignedTo==='Goncalo'?' selected':'')+'>Goncalo</option><option'+(tr.assignedTo==='Both'?' selected':'')+'>Both</option></select></td>';
+    tHtml+='<td style="width:28px"><button class="btn btn-ghost btn-small track-expand-btn" data-trid="'+tr.id+'" style="padding:2px 6px;">'+(isExp?'▲':'▼')+'</button></td>';
+    tHtml+='<td><button class="track-remove-btn" data-trid="'+tr.id+'">x</button></td></tr>';
+    if(isExp){
+      tHtml+='<tr class="track-detail-row"><td colspan="6"><div class="track-detail-panel">';
+      tHtml+='<div class="track-detail-grid">';
+      tHtml+=tFld(tr,'bpm','BPM','e.g. 120');tHtml+=tFld(tr,'key','Key','e.g. A minor');
+      tHtml+='<div class="field-group"><div class="field-label">SPA Registered</div><select class="select-input" data-trid="'+tr.id+'" data-field="spaRegistered"><option value="no"'+(tr.spaRegistered!=='yes'?' selected':'')+'>No</option><option value="yes"'+(tr.spaRegistered==='yes'?' selected':'')+'>Yes</option></select></div>';
+      tHtml+=tFld(tr,'spaNumber','SPA Number','');
+      tHtml+='<div class="field-group"><div class="field-label">Released within project</div><select class="select-input" data-trid="'+tr.id+'" data-field="released"><option value="no"'+(tr.released!=='yes'?' selected':'')+'>No</option><option value="yes"'+(tr.released==='yes'?' selected':'')+'>Yes</option></select></div>';
+      tHtml+='<div class="field-group"><div class="field-label">Feedback Pending</div><select class="select-input" data-trid="'+tr.id+'" data-field="feedbackPending"><option value="no"'+(tr.feedbackPending!=='yes'?' selected':'')+'>No</option><option value="yes"'+(tr.feedbackPending==='yes'?' selected':'')+'>Yes</option></select></div>';
+      tHtml+='</div>';
+      if(tr.feedbackPending==='yes')tHtml+='<div class="field-group" style="margin-top:8px;"><div class="field-label">Feedback Notes</div><textarea class="field-input" data-trid="'+tr.id+'" data-field="feedbackNotes" rows="2">'+esc(tr.feedbackNotes)+'</textarea></div>';
+      tHtml+='<div class="field-group" style="margin-top:8px;"><div class="field-label">Notes</div><textarea class="field-input" data-trid="'+tr.id+'" data-field="notes" rows="2">'+esc(tr.notes)+'</textarea></div>';
+      tHtml+='<div style="margin-top:10px;font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px;">Credits <span style="font-weight:400;">(overrides project defaults if filled)</span></div>';
+      tHtml+='<div class="track-detail-grid">';
+      tHtml+=tFld(tr,'credits_produced','Produced by');tHtml+=tFld(tr,'credits_coproduced','Co-produced by');
+      tHtml+=tFld(tr,'credits_recorded','Recorded by');tHtml+=tFld(tr,'credits_mixed','Mixed by');
+      tHtml+=tFld(tr,'credits_mastered','Mastered by');tHtml+=tFld(tr,'credits_songwriting','Songwriting');
+      tHtml+='</div>';
+      tHtml+='<div class="field-group" style="margin-top:6px;"><div class="field-label">Instruments & Performers</div><textarea class="field-input" data-trid="'+tr.id+'" data-field="credits_performers" rows="2">'+esc(tr.credits_performers)+'</textarea></div>';
+      tHtml+='<div class="field-group" style="margin-top:6px;"><div class="field-label">Additional Credits</div><textarea class="field-input" data-trid="'+tr.id+'" data-field="credits_additional" rows="2">'+esc(tr.credits_additional)+'</textarea></div>';
+      tHtml+='<div style="margin-top:10px;"><button class="btn btn-ghost btn-small track-print-btn" data-trid="'+tr.id+'">Export Track Credits</button></div>';
+      tHtml+='</div></td></tr>';
+    }
+  }
+  var html='<div class="project-detail">';
+  html+='<div class="detail-header"><div>';
+  html+='<div><input class="field-input" data-field="title" value="'+esc(project.title)+'" style="font-size:20px;font-weight:800;background:transparent;border-color:transparent;padding:2px 0;width:100%;"></div>';
+  html+='<div style="margin-top:4px;"><input class="field-input" data-field="artistName" value="'+(artist?esc(artist.name):'')+'" style="font-size:12px;background:transparent;border-color:transparent;color:var(--accent);padding:0;" placeholder="Artist name"></div>';
+  html+='<div class="detail-meta"><span class="format-badge">'+esc(project.format)+'</span><span class="phase-pill phase-'+project.phase+'">'+PHASE_LABELS[project.phase]+'</span>'+(project.feedbackPending==='yes'?'<span class="feedback-pending-badge">Awaiting feedback</span>':'')+'</div>';
+  html+='</div><div style="display:flex;gap:6px;"><button class="btn btn-ghost btn-small" id="exportProjectBtn">Export</button><button class="btn btn-danger btn-small" id="deleteProjectBtn">Delete</button></div></div>';
+  if(project.phase!=='onhold'&&project.phase!=='closed')html+='<div class="section"><div class="section-title">Phase</div><div class="phase-tracker">'+phHtml+'</div></div>';
+  if(project.phase==='onhold')html+='<div class="section"><div class="section-title">On Hold</div><div class="field-group"><div class="field-label">Reason</div><input class="field-input" data-field="onHoldReason" value="'+esc(project.onHoldReason)+'" placeholder="Reason..."></div></div>';
+  html+='<div class="section"><div class="section-title">Project Info</div><div class="fields-grid">';
+  html+=pFld('Genre','genre',project.genre,'e.g. Indie Rock');html+=pFld('BPM','bpm',project.bpm,'e.g. 120');
+  html+=pFld('Key','key',project.key,'e.g. A minor');
+  html+='<div class="field-group"><div class="field-label">Format</div><select class="select-input" data-field="format"><option'+(project.format==='Album'?' selected':'')+'>Album</option><option'+(project.format==='EP'?' selected':'')+'>EP</option><option'+(project.format==='Single'?' selected':'')+'>Single</option><option'+(project.format==='Demo'?' selected':'')+'>Demo</option><option'+(project.format==='Other'?' selected':'')+'>Other</option></select></div>';
+  html+='<div class="field-group"><div class="field-label">Phase</div><select class="select-input" data-field="phase">';
+  for(var php=0;php<PHASES.length;php++)html+='<option value="'+PHASES[php]+'"'+(project.phase===PHASES[php]?' selected':'')+'>'+PHASE_LABELS[PHASES[php]]+'</option>';
+  html+='</select></div>';
+  html+='<div class="field-group"><div class="field-label">SPA Registered</div><select class="select-input" data-field="spaRegistered"><option value="no"'+(project.spaRegistered!=='yes'?' selected':'')+'>No</option><option value="yes"'+(project.spaRegistered==='yes'?' selected':'')+'>Yes</option></select></div>';
+  html+=pFld('SPA Number','spaNumber',project.spaNumber,'');
+  html+='<div class="field-group"><div class="field-label">Feedback Pending</div><select class="select-input" data-field="feedbackPending"><option value="no"'+(project.feedbackPending!=='yes'?' selected':'')+'>No</option><option value="yes"'+(project.feedbackPending==='yes'?' selected':'')+'>Yes</option></select></div>';
+  html+='</div></div>';
+  if(project.feedbackPending==='yes')html+='<div class="section"><div class="section-title">Feedback Notes</div><textarea class="field-input" data-field="feedbackNotes" rows="2">'+esc(project.feedbackNotes)+'</textarea></div>';
+  html+='<div class="section"><div class="section-title">Tracks</div><table class="tracks-table"><thead><tr><th>#</th><th>Title</th><th>Phase</th><th>Assigned</th><th></th><th></th></tr></thead><tbody>'+tHtml+'</tbody></table><button class="add-track-btn" id="addTrackBtn">+ Add Track</button></div>';
+  html+='<div class="section"><div class="section-title">Project Credits (Default)</div><div class="fields-grid">';
+  html+=pFldFull('Produced by','credits_produced',project.credits_produced);html+=pFldFull('Co-produced by','credits_coproduced',project.credits_coproduced);
+  html+=pFldFull('Recorded by','credits_recorded',project.credits_recorded);html+=pFldFull('Mixed by','credits_mixed',project.credits_mixed);
+  html+=pFldFull('Mastered by','credits_mastered',project.credits_mastered);html+=pFldFull('Songwriting','credits_songwriting',project.credits_songwriting);
+  html+='<div class="field-group full"><div class="field-label">Instruments & Performers</div><textarea class="field-input" data-field="credits_performers" rows="3">'+esc(project.credits_performers)+'</textarea></div>';
+  html+='<div class="field-group full"><div class="field-label">Additional Credits</div><textarea class="field-input" data-field="credits_additional" rows="2">'+esc(project.credits_additional)+'</textarea></div>';
+  html+='</div></div>';
+  html+='<div class="section"><div class="section-title">Links</div><div class="links-grid">';
+  html+=lnk('🎵','link_spotify',project.link_spotify,'Spotify');html+=lnk('▶','link_youtube',project.link_youtube,'YouTube');
+  html+=lnk('📸','link_instagram',project.link_instagram,'Instagram');html+=lnk('🎧','link_soundcloud',project.link_soundcloud,'SoundCloud');
+  html+=lnk('🍎','link_apple',project.link_apple,'Apple Music');html+=lnk('🔗','link_other',project.link_other,'Other');
+  html+='</div></div>';
+  html+='<div class="section"><div class="section-title">Notes</div><textarea class="field-input" data-field="notes" rows="4">'+esc(project.notes)+'</textarea></div>';
+  html+='</div>';
+  document.getElementById('mainContent').innerHTML=html;
+  bindProjectEvents();
+}
+
+function tFld(tr,field,label,ph){return '<div class="field-group"><div class="field-label">'+label+'</div><input class="field-input" data-trid="'+tr.id+'" data-field="'+field+'" value="'+esc(tr[field]||'')+'" placeholder="'+(ph||'Inherits from project...')+'"></div>';}
+function pFld(label,field,val,ph){return '<div class="field-group"><div class="field-label">'+label+'</div><input class="field-input" data-field="'+field+'" value="'+esc(val||'')+'" placeholder="'+esc(ph||'')+'"></div>';}
+function pFldFull(label,field,val){return '<div class="field-group full"><div class="field-label">'+label+'</div><input class="field-input" data-field="'+field+'" value="'+esc(val||'')+'"></div>';}
+function lnk(icon,field,val,ph){return '<div class="link-row"><div class="link-icon">'+icon+'</div><input class="link-input" data-field="'+field+'" value="'+esc(val||'')+'" placeholder="'+ph+'"></div>';}
+
+function bindProjectEvents(){
+  var project=getProject();if(!project)return;
+  var steps=document.querySelectorAll('.phase-step');
+  for(var s=0;s<steps.length;s++)steps[s].addEventListener('click',function(){updateProjectField('phase',this.getAttribute('data-phase'));});
+  var inputs=document.querySelectorAll('#mainContent .field-input[data-field]:not([data-trid]),#mainContent .select-input[data-field]:not([data-trid]),#mainContent .link-input[data-field]');
+  for(var i=0;i<inputs.length;i++){
+    inputs[i].addEventListener('input',function(){var f=this.getAttribute('data-field');if(f==='artistName')updateArtistName(this.value);else updateProjectField(f,this.value);});
+    inputs[i].addEventListener('change',function(){var f=this.getAttribute('data-field');if(f==='artistName')updateArtistName(this.value);else updateProjectField(f,this.value);});
+  }
+  var tas=document.querySelectorAll('#mainContent textarea.field-input[data-field]:not([data-trid])');
+  for(var ta=0;ta<tas.length;ta++)tas[ta].addEventListener('input',function(){updateProjectField(this.getAttribute('data-field'),this.value);});
+  var tInputs=document.querySelectorAll('.track-title-input');
+  for(var ti=0;ti<tInputs.length;ti++)tInputs[ti].addEventListener('input',function(){updateTrackField(this.getAttribute('data-trid'),this.getAttribute('data-field'),this.value);});
+  var tSels=document.querySelectorAll('.track-phase-select,.track-assigned-select');
+  for(var ts=0;ts<tSels.length;ts++)tSels[ts].addEventListener('change',function(){updateTrackField(this.getAttribute('data-trid'),this.getAttribute('data-field'),this.value);});
+  var tPanel=document.querySelectorAll('.track-detail-panel .field-input[data-trid],.track-detail-panel .select-input[data-trid]');
+  for(var tp=0;tp<tPanel.length;tp++){tPanel[tp].addEventListener('input',function(){updateTrackField(this.getAttribute('data-trid'),this.getAttribute('data-field'),this.value);});tPanel[tp].addEventListener('change',function(){updateTrackField(this.getAttribute('data-trid'),this.getAttribute('data-field'),this.value);});}
+  var expBtns=document.querySelectorAll('.track-expand-btn');
+  for(var eb=0;eb<expBtns.length;eb++)expBtns[eb].addEventListener('click',function(){var t=this.getAttribute('data-trid');expandedTrackId=expandedTrackId===t?null:t;renderProjectDetail();});
+  var rmBtns=document.querySelectorAll('.track-remove-btn');
+  for(var rb=0;rb<rmBtns.length;rb++)rmBtns[rb].addEventListener('click',function(){removeTrack(this.getAttribute('data-trid'));});
+  document.getElementById('addTrackBtn').addEventListener('click',addTrack);
+  document.getElementById('deleteProjectBtn').addEventListener('click',deleteProject);
+  document.getElementById('exportProjectBtn').addEventListener('click',exportProject);
+  var pBtns=document.querySelectorAll('.track-print-btn');
+  for(var pb=0;pb<pBtns.length;pb++)pBtns[pb].addEventListener('click',function(){exportTrack(this.getAttribute('data-trid'));});
+}
+
+function updateArtistName(name){var project=getProject();if(!project)return;var artist=getArtist(project.artistId);if(artist){artist.name=name;debounceSave('Artists',artist);renderSidebar();}}
+function updateProjectField(field,value){var project=getProject();if(!project)return;project[field]=value;if(field==='title')renderSidebar();if(field==='phase'||field==='feedbackPending'){renderSidebar();renderProjectDetail();return;}debounceSave('Projects',project);}
+function updateTrackField(trid,field,value){for(var i=0;i<tracks.length;i++){if(tracks[i].id===trid){tracks[i][field]=value;if(field==='released')renderSidebar();if(field==='feedbackPending'){renderProjectDetail();return;}debounceSave('Tracks',tracks[i]);return;}}}
+
+function addTrack(){
+  var project=getProject();if(!project)return;
+  var pt=tracks.filter(function(t){return t.projectId===currentProjectId;});
+  var nt={id:uid(),projectId:currentProjectId,number:String(pt.length+1),title:'',phase:'production',assignedTo:'Leopoldo',notes:'',bpm:'',key:'',spaRegistered:'no',spaNumber:'',feedbackPending:'no',feedbackNotes:'',released:'no',credits_produced:project.credits_produced||'',credits_coproduced:project.credits_coproduced||'',credits_recorded:project.credits_recorded||'',credits_mixed:project.credits_mixed||'',credits_mastered:project.credits_mastered||'',credits_songwriting:project.credits_songwriting||'',credits_performers:project.credits_performers||'',credits_additional:project.credits_additional||''};
+  tracks.push(nt);
+  saveRecord('Tracks',nt);
+  renderProjectDetail();
+}
+
+function removeTrack(trid){
+  if(!confirm('Remove this track?'))return;
+  tracks=tracks.filter(function(t){return t.id!==trid;});
+  deleteRecord('Tracks',trid);
+  if(expandedTrackId===trid)expandedTrackId=null;
+  renderProjectDetail();
+}
+
+function deleteProject(){
+  if(!confirm('Delete this project and all its tracks?'))return;
+  var pt=tracks.filter(function(t){return t.projectId===currentProjectId;});
+  for(var i=0;i<pt.length;i++)deleteRecord('Tracks',pt[i].id);
+  tracks=tracks.filter(function(t){return t.projectId!==currentProjectId;});
+  projects=projects.filter(function(p){return p.id!==currentProjectId;});
+  deleteRecord('Projects',currentProjectId);
+  currentProjectId=null;renderSidebar();
+  document.getElementById('mainContent').innerHTML='<div class="empty-state"><div class="empty-icon">◈</div><div class="empty-text">Select a project to view details</div></div>';
+}
+
+function credLine(label,val){return val?'<div style="margin-bottom:4px;"><span style="font-size:10px;color:#888;text-transform:uppercase;">'+label+'</span><br><span style="font-size:12px;">'+String(val).replace(/\n/g,'<br>')+'</span></div>':'';}
+
+function exportProject(){
+  var project=getProject();if(!project)return;
+  var artist=getArtist(project.artistId);
+  var pt=tracks.filter(function(t){return t.projectId===project.id;});
+  pt.sort(function(a,b){return parseInt(a.number||0)-parseInt(b.number||0);});
+  var html='<!DOCTYPE html><html><head><meta charset="UTF-8"><title>'+esc(project.title)+'</title><style>body{font-family:Arial,sans-serif;color:#1a1a1a;max-width:700px;margin:40px auto;padding:0 20px;}.header{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2px solid #1a1a1a;padding-bottom:12px;margin-bottom:20px;}.credits-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;}.track-block{border:1px solid #e8e8e8;border-radius:4px;padding:12px;margin-bottom:8px;}.footer{margin-top:40px;padding-top:10px;border-top:1px solid #e0e0e0;display:flex;justify-content:space-between;font-size:10px;color:#888;}</style></head><body>';
+  html+='<div class="header"><div><div style="font-size:22px;font-weight:800;">'+esc(project.title)+'</div><div style="font-size:13px;color:#555;">'+(artist?esc(artist.name):'')+'</div></div>';
+  html+='<div style="text-align:right;font-size:10px;color:#888;"><img src="https://soundpressurestudios.com/wp-content/uploads/2024/11/sps-logo-simbolo-transp-Medium.png" style="height:28px;opacity:.7;display:block;margin-left:auto;margin-bottom:4px;"><span>Sound Pressure Studios</span></div></div>';
+  html+='<div class="credits-grid">'+credLine('Produced by',project.credits_produced)+credLine('Co-produced by',project.credits_coproduced)+credLine('Recorded by',project.credits_recorded)+credLine('Mixed by',project.credits_mixed)+credLine('Mastered by',project.credits_mastered)+credLine('Songwriting',project.credits_songwriting)+'</div>';
+  if(project.credits_performers)html+=credLine('Instruments',project.credits_performers);
+  if(project.credits_additional)html+='<div style="font-size:11px;color:#555;margin-bottom:12px;">'+String(project.credits_additional).replace(/\n/g,'<br>')+'</div>';
+  if(pt.length>0){
+    html+='<div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#888;margin:16px 0 10px;">Tracklist</div>';
+    for(var i=0;i<pt.length;i++){
+      var tr=pt[i];var ec=function(f){return tr[f]||project[f]||'';};
+      html+='<div class="track-block"><div style="font-size:10px;color:#888;">'+String(tr.number||i+1).padStart(2,'0')+'</div><div style="font-size:14px;font-weight:700;margin-bottom:6px;">'+esc(tr.title)+'</div>';
+      if(tr.bpm||tr.key)html+='<div style="font-size:10px;color:#888;margin-bottom:6px;">'+(tr.bpm?'BPM: '+esc(tr.bpm)+'  ':'')+( tr.key?'Key: '+esc(tr.key):'')+'</div>';
+      html+='<div class="credits-grid">'+credLine('Produced by',ec('credits_produced'))+credLine('Recorded by',ec('credits_recorded'))+credLine('Mixed by',ec('credits_mixed'))+credLine('Mastered by',ec('credits_mastered'))+'</div>';
+      html+='</div>';
+    }
+  }
+  html+='<div class="footer"><span>Sound Pressure Studios — soundpressurestudios.com</span><span>'+new Date().toLocaleDateString('en-GB')+'</span></div>';
+  html+='<script>window.onload=function(){window.print();}<\/script></body></html>';
+  var w=window.open('','_blank');w.document.write(html);w.document.close();
+}
+
+function exportTrack(trid){
+  var project=getProject();if(!project)return;
+  var artist=getArtist(project.artistId);
+  var tr=null;for(var i=0;i<tracks.length;i++){if(tracks[i].id===trid){tr=tracks[i];break;}}if(!tr)return;
+  var ec=function(f){return tr[f]||project[f]||'';};
+  var html='<!DOCTYPE html><html><head><meta charset="UTF-8"><title>'+esc(tr.title)+'</title><style>body{font-family:Arial,sans-serif;color:#1a1a1a;max-width:600px;margin:40px auto;padding:0 20px;}.header{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2px solid #1a1a1a;padding-bottom:12px;margin-bottom:20px;}.credits-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;}.footer{margin-top:40px;padding-top:10px;border-top:1px solid #e0e0e0;display:flex;justify-content:space-between;font-size:10px;color:#888;}</style></head><body>';
+  html+='<div class="header"><div><div style="font-size:10px;color:#888;">'+esc(project.title)+' · '+(artist?esc(artist.name):'')+'</div><div style="font-size:20px;font-weight:800;">'+String(tr.number||'').padStart(2,'0')+'. '+esc(tr.title)+'</div></div>';
+  html+='<div style="text-align:right;font-size:10px;color:#888;"><img src="https://soundpressurestudios.com/wp-content/uploads/2024/11/sps-logo-simbolo-transp-Medium.png" style="height:26px;opacity:.7;display:block;margin-left:auto;margin-bottom:4px;"><span>Sound Pressure Studios</span></div></div>';
+  html+='<div class="credits-grid">'+credLine('Produced by',ec('credits_produced'))+credLine('Co-produced by',ec('credits_coproduced'))+credLine('Recorded by',ec('credits_recorded'))+credLine('Mixed by',ec('credits_mixed'))+credLine('Mastered by',ec('credits_mastered'))+credLine('Songwriting',ec('credits_songwriting'))+'</div>';
+  if(ec('credits_performers'))html+=credLine('Instruments',ec('credits_performers'));
+  if(ec('credits_additional'))html+='<div style="font-size:11px;color:#555;margin-bottom:12px;">'+String(ec('credits_additional')).replace(/\n/g,'<br>')+'</div>';
+  if(tr.spaRegistered==='yes')html+='<div style="font-size:10px;color:#888;margin-bottom:8px;">SPA: '+esc(tr.spaNumber)+'</div>';
+  html+='<div class="footer"><span>Sound Pressure Studios — soundpressurestudios.com</span><span>'+new Date().toLocaleDateString('en-GB')+'</span></div>';
+  html+='<script>window.onload=function(){window.print();}<\/script></body></html>';
+  var w=window.open('','_blank');w.document.write(html);w.document.close();
+  }
+
+function openNewProjectModal(){document.getElementById('newProjectModal').style.display='flex';document.getElementById('npArtist').focus();}
+function closeNewProjectModal(){document.getElementById('newProjectModal').style.display='none';}
+
+function createProject(){
+  var artistName=document.getElementById('npArtist').value.trim();
+  var title=document.getElementById('npTitle').value.trim();
+  if(!artistName||!title){alert('Please enter an artist name and project title.');return;}
+  var artistId=null;
+  for(var i=0;i<artists.length;i++){if(artists[i].name.toLowerCase()===artistName.toLowerCase()){artistId=artists[i].id;break;}}
+  if(!artistId){var na={id:uid(),name:artistName};artists.push(na);saveRecord('Artists',na);artistId=na.id;}
+  var np={id:uid(),artistId:artistId,title:title,format:document.getElementById('npFormat').value,phase:document.getElementById('npPhase').value,onHoldReason:document.getElementById('npOnHoldReason').value.trim(),genre:document.getElementById('npGenre').value.trim(),bpm:'',key:'',spaRegistered:'no',spaNumber:'',feedbackPending:'no',feedbackNotes:'',notes:'',credits_produced:'Leopoldo Lopes, Goncalo Quintas',credits_coproduced:'',credits_recorded:'Leopoldo Lopes, Goncalo Quintas',credits_mixed:'Leopoldo Lopes',credits_mastered:'Leopoldo Lopes',credits_songwriting:'',credits_performers:'',credits_additional:'Sound Pressure Studios\nhttps://soundpressurestudios.com',link_spotify:'',link_youtube:'',link_instagram:'',link_soundcloud:'',link_apple:'',link_other:''};
+  projects.push(np);
+  saveRecord('Projects',np);
+  closeNewProjectModal();
+  document.getElementById('npArtist').value='';document.getElementById('npTitle').value='';document.getElementById('npGenre').value='';
+  currentProjectId=np.id;expandedTrackId=null;renderAll();renderProjectDetail();
+}
+
+function openNewTaskModal(){document.getElementById('newTaskModal').style.display='flex';document.getElementById('ntTitle').focus();}
+function closeNewTaskModal(){document.getElementById('newTaskModal').style.display='none';}
+
+function createTask(){
+  var title=document.getElementById('ntTitle').value.trim();
+  if(!title){alert('Please enter a task description.');return;}
+  var nt={id:uid(),title:title,projectId:document.getElementById('ntProject').value,trackId:'',assignedTo:document.getElementById('ntAssigned').value,deadline:document.getElementById('ntDeadline').value,priority:document.getElementById('ntPriority').value,done:'false',notes:document.getElementById('ntNotes').value};
+  tasks.push(nt);
+  saveRecord('Tasks',nt);
+  closeNewTaskModal();document.getElementById('ntTitle').value='';document.getElementById('ntDeadline').value='';document.getElementById('ntNotes').value='';
+  renderTasks();
+}
+
+function updateArtistDatalist(){var dl=document.getElementById('artistsList');if(!dl)return;var h='';for(var i=0;i<artists.length;i++)h+='<option value="'+esc(artists[i].name)+'">';dl.innerHTML=h;}
+function updateProjectSelect(){var sel=document.getElementById('ntProject');if(!sel)return;var h='<option value="">— None —</option>';for(var i=0;i<projects.length;i++)h+='<option value="'+projects[i].id+'">'+esc(projects[i].title)+'</option>';sel.innerHTML=h;}
+
+document.getElementById('newProjectBtn').addEventListener('click',openNewProjectModal);
+document.getElementById('cancelProjectBtn').addEventListener('click',closeNewProjectModal);
+document.getElementById('createProjectBtn').addEventListener('click',createProject);
+document.getElementById('addTaskBtn').addEventListener('click',openNewTaskModal);
+document.getElementById('addTaskBtn2').addEventListener('click',openNewTaskModal);
+document.getElementById('cancelTaskBtn').addEventListener('click',closeNewTaskModal);
+document.getElementById('createTaskBtn').addEventListener('click',createTask);
+document.getElementById('searchInput').addEventListener('input',renderSidebar);
+document.getElementById('npPhase').addEventListener('change',function(){document.getElementById('onHoldReasonGroup').style.display=this.value==='onhold'?'flex':'none';});
+var chips=document.querySelectorAll('.filter-chip');
+for(var fc=0;fc<chips.length;fc++){chips[fc].addEventListener('click',function(){currentFilter=this.getAttribute('data-filter');var all=document.querySelectorAll('.filter-chip');for(var c=0;c<all.length;c++)all[c].classList.remove('active');this.classList.add('active');renderSidebar();});}
+document.addEventListener('keydown',function(e){if(e.key==='Escape'){closeNewProjectModal();closeNewTaskModal();}});
+
+loadData();
+</script>
+</body>
+</html>
